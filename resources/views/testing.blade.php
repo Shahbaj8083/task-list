@@ -8,7 +8,8 @@
 
 <div>
     @forelse($tasks as $task)
-         <li>{{$task->title}}</li><br>
+        <a href= "{{route('tasks.show', ['id' => $task->id])}}" >{{$task->title}}</a><br>
+         {{-- <li>{{$task->title}}</li><br> --}}
     @empty
         <li>No task found</li>
     @endforelse
