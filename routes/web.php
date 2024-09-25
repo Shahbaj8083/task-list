@@ -1,9 +1,8 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Route;
+use App\Http\Requests\TaskRequest;
 use App\Models\Task;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,130 +15,68 @@ use App\Models\Task;
 |
 */
 
-// class Task
-// {
-//   public function __construct(
-//     public int $id,
-//     public string $title,
-//     public string $description,
-//     public ?string $long_description,
-//     public bool $completed,
-//     public string $created_at,
-//     public string $updated_at
-//   ) {
-
-//   }
-// }
-
-// $tasks = [
-//   new Task(
-//     1,
-//     'Buy groceries',
-//     'Task 1 description',
-//     'Task 1 long description',
-//     false,
-//     '2023-03-01 12:00:00',
-//     '2023-03-01 12:00:00'
-//   ),
-//   new Task(
-//     2,
-//     'Sell old stuff',
-//     'Task 2 description',
-//     null,
-//     false,
-//     '2023-03-02 12:00:00',
-//     '2023-03-02 12:00:00'
-//   ),
-//   new Task(
-//     3,
-//     'Learn programming',
-//     'Task 3 description',
-//     'Task 3 long description',
-//     true,
-//     '2023-03-03 12:00:00',
-//     '2023-03-03 12:00:00'
-//   ),
-//   new Task(
-//     4,
-//     'Take dogs for a walk',
-//     'Task 4 description',
-//     null,
-//     false,
-//     '2023-03-04 12:00:00',
-//     '2023-03-04 12:00:00'
-//   ),
-// ];
-
+# Redirect the root URL to the tasks index route
 Route::get('/', function () {
-    return redirect('/tasks');
+    return redirect()->route('tasks.index');
 });
 
+# Display a paginated list of tasks on the tasks index page
 Route::get('/tasks', function () {
-    // return view('welcome');
-    return view('testing', ['tasks' => Task::latest()->get()]);
-})->name('task.index');
-
-Route::view('/tasks/create', 'create')->name('tasks.create'); #Directly call the view
-
-Route::post('/tasks', function(Request $request){
-    $data = $request->validate([
-        'title' => 'required|max:255',
-        'description' => 'required',
-        'long_description' => 'required'
+    return view('index', [
+        'tasks' => Task::latest()->paginate(10) # Fetch latest tasks, paginated to 10 per page
     ]);
-    $task = new Task();
-    $task->title = $data['title'];
-    $task->description = $data['description'];
-    $task->long_description = $data['long_description'];
+})->name('tasks.index');
 
-    $task->save();
+# Show the task creation form
+Route::view('/tasks/create', 'create')
+    ->name('tasks.create'); # This route will show the 'create' view without needing a controller
 
-    return redirect()->route('tasks.show', ['id' => $task->id]);
+# Show the task editing form for a specific task
+Route::get('/tasks/{task}/edit', function (Task $task) {
+    return view('edit', [
+        'task' => $task # Pass the task model instance to the 'edit' view
+    ]);
+})->name('tasks.edit');
 
-})->name('tasks.store');
-
-
-Route::get('/tasks/{id}', function ($id) {
-    return view('show', ['task' => Task::findOrFail($id)]);
-
-    /* return view('welcome');
-    $tasks = collect($tasks)->firstWhere('id', $id);//changing array to object
-
-    if(!$tasks){
-      abort(Response::HTTP_NOT_FOUND);
-    }
-    */
+# Display a specific task's details
+Route::get('/tasks/{task}', function (Task $task) {
+    return view('show', [
+        'task' => $task # Pass the task model instance to the 'show' view
+    ]);
 })->name('tasks.show');
 
+# Store a newly created task
+Route::post('/tasks', function (TaskRequest $request) {
+    $task = Task::create($request->validated()); # Create a new task using validated data
 
+    return redirect()->route('tasks.show', ['task' => $task->id]) # Redirect to the newly created task's detail page
+        ->with('success', 'Task created successfully!'); # Flash a success message
+})->name('tasks.store');
 
+# Update an existing task
+Route::put('/tasks/{task}', function (Task $task, TaskRequest $request) {
+    $task->update($request->validated()); # Update the task with validated data
 
+    return redirect()->route('tasks.show', ['task' => $task->id]) # Redirect to the updated task's detail page
+        ->with('success', 'Task updated successfully!'); # Flash a success message
+})->name('tasks.update');
 
+# Delete a specific task
+Route::delete('/tasks/{task}', function (Task $task) {
+    $task->delete(); # Delete the task
 
+    return redirect()->route('tasks.index') # Redirect back to the tasks index page
+        ->with('success', 'Task deleted successfully!'); # Flash a success message
+})->name('tasks.destroy');
 
+# Toggle the completion status of a specific task
+Route::put('tasks/{task}/toggle-complete', function (Task $task) {
+    $task->toggleComplete(); # Call a method to toggle the task's completion status
 
+    return redirect()->back()->with('success', 'Task updated successfully!'); # Redirect back with a success message
+})->name('tasks.toggle-complete');
 
-
-/*
-Route::get('/hello', function () {
-    return "Hello !";
-});
-
-Route::get('/greet/{name}', function($name){
-    return "Hello ". $name."!"; 
-});
-
-Route::get('/hallo', function(){
-    // return 'Hallo';
-    return redirect('/hello');
-});
-
-Route::get('/view', function(){
-    return view('testing',['name'=>'shahbaz']);
-});
-*/
-
+# Fallback route for handling any unmatched routes
 Route::fallback(function () {
-    return "Still got somewhere !!!, url not found";
+    return 'Still got somewhere!'; # Return a simple message for undefined routes
 });
-
